@@ -3,14 +3,13 @@ package com.company;
 import javax.sound.sampled.*;
 import java.io.File;
 import java.io.IOException;
+import java.util.Scanner;
 
-enum Action { PLAY, STOP, PREV, NEXT, EXIT };
+enum Action {PLAY, STOP, LIST, SELECT, PREV, NEXT, EXIT};
 
 public class Controller {
-    private Clip audioClip;
 
-
-    public void carryOutAction(String action)  {
+    public void carryOutAction(String action) {
         Action matchedEnum;
         try {
             matchedEnum = Action.valueOf(action.toUpperCase());
@@ -19,58 +18,65 @@ public class Controller {
         }
         switch (matchedEnum) {
             case PLAY:
-                String filePath = "C:\\Users\\eoinj\\IdeaProjects\\MusicPlayer\\music\\cantina.wav";
-                play(filePath);
+                if (Main.player.getCurrentSong() == null) {
+                    throw new IllegalArgumentException("No song has been chosen to play");
+                }
+                if (Main.player.getStatus() == Status.PLAYING) {
+                    throw new IllegalArgumentException("Player is already playing");
+                }
+                try {
+                    Main.player.getCurrentSong().play();
+                } catch (Exception ex) {
+                    System.out.println(ex.getMessage());
+                }
                 return;
             case STOP:
-                stop();
+                if(Main.player.getStatus() == Status.PLAYING) {
+                    Main.player.getCurrentSong().stop();
+                }
                 return;
+            case LIST:
+                Main.player.getLibrary().displaySongs();
+                Main.player.displayCurrentSong();
+                return;
+            case SELECT:
+                Scanner input = new Scanner(System.in);
+                Main.player.getLibrary().displaySongs();
+                Main.player.displayCurrentSong();
+                System.out.print("Choose song from list: ");
+                String selection = input.next();
+                try {
+                    Main.player.getLibrary().chooseSong(selection);
+                } catch (IllegalArgumentException ex) {
+                    System.out.println(ex.getMessage());
+                    return;
+                }
+                System.out.println("Song selected:" + Main.player.getCurrentSong().getTitle());
+                return;
+
             case PREV:
-                prev();
+                if(Main.player.getCurrentSong() != null) {
+                    Main.player.getCurrentSong().stop();
+                    Main.player.getLibrary().prevSong();
+                }
                 return;
             case NEXT:
-                next();
+                if(Main.player.getCurrentSong() != null) {
+                    Main.player.getCurrentSong().stop();
+                    Main.player.getLibrary().nextSong();
+                }
                 return;
             case EXIT:
-                stop();
-                audioClip.close();
+                if(Main.player.getStatus() == Status.PLAYING) {
+                    Main.player.getCurrentSong().stop();
+                    Main.player.getCurrentSong().getAudioClip().close();
+                }
                 System.exit(1);
             default:
                 throw new IllegalArgumentException("Control argument is invalid, please try again");
         }
     }
 
-    public void play(String filePath) {
-        File fileIn = new File(filePath);
-        try {
-            AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(fileIn);
-            AudioFileFormat audioFileFormat = AudioSystem.getAudioFileFormat(fileIn);
-            AudioFormat audioFormat = audioFileFormat.getFormat();
-            System.out.print("...\n");
-            DataLine.Info info = new DataLine.Info(Clip.class, audioFormat);
-            audioClip = (Clip) AudioSystem.getLine(info);
-            audioClip.open(audioInputStream);
-            audioClip.start();
 
-        } catch (UnsupportedAudioFileException ex) {
-            System.out.println("The specified audio file is not supported.");
-            ex.printStackTrace();
-        } catch (LineUnavailableException ex) {
-            System.out.println("Audio line for playing back is unavailable.");
-            ex.printStackTrace();
-        } catch (IOException ex) {
-            System.out.println("Error playing the audio file.");
-            ex.printStackTrace();
-        }
-
-    }
-
-    public void stop() {
-        audioClip.stop();
-    }
-
-    public void prev() {}
-
-    public void next() {}
 
 }
